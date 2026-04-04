@@ -6,6 +6,8 @@ import { PROTOCOL_VERSIONS, CURRENT_VERSION, DEFAULT_VARIANT, AVAILABLE_VERSIONS
 		 ED25519_PRIV_SIZE, ED25519_PUB_SIZE, ED25519_SIG_SIZE,
 		 HEADER_SIZE, VARIANT_ID } from './constants.mjs';
 
+export { ed25519, PROTOCOL_VERSIONS, CURRENT_VERSION, AVAILABLE_VERSIONS };
+
 /** 
  * @typedef {{ publicKey: Uint8Array, secretKey: Uint8Array }} Keypair
  * @typedef {import('@pinkparrot/qsafe-mayo-wasm').MayoSigner} MayoSigner */

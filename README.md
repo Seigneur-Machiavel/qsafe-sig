@@ -63,7 +63,7 @@ Both keys are derived from the same master seed via **HKDF-SHA256**, using separ
 Creates a signer instance ready for both signing and verifying.
 
 - `variant`: `'mayo1'` (default) or `'mayo2'`
-- `version`: protocol version string. Default: `'1'`
+- `version`: protocol version string. Default: `'<CURRENT_VERSION>'`
 
 ### `QsafeSigner.createFull(versions?)` → `Promise<QsafeSigner>`
 
