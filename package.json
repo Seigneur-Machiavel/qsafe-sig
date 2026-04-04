@@ -1,7 +1,16 @@
 {
-  "name": "qsafe-sig",
+  "name": "@pinkparrot/qsafe-sig",
   "version": "0.0.2",
+  "author": "PinkParrot",
+  "license": "GPL-3.0",
   "description": "Combination of pre quantum and post quantum signature, designed for a smooth migration.",
+  "type": "module",
+  "exports": {
+    ".": {
+      "browser": "./dist/qsafe-sig.browser.min.js",
+      "default": "./index.mjs"
+    }
+  },
   "publishConfig": {
     "access": "public"
   },
@@ -11,7 +20,6 @@
     "build:min": "esbuild index.mjs --bundle --outfile=dist/qsafe-sig.browser.min.js --format=esm --platform=browser --define:ENVIRONMENT_IS_NODE=false --external:node:module --external:node:fs --external:node:path --external:node:crypto --external:node:url",
     "build": "npm run build:min"
   },
-  "files": [],
   "dependencies": {
     "@noble/curves": "2.0.1",
     "@noble/hashes": "2.0.1",
@@ -24,7 +32,12 @@
     "type": "git",
     "url": "https://github.com/Seigneur-Machiavel/qsafe-sig.git"
   },
-  "keywords": [],
-  "author": "PinkParrot",
-  "license": "GPL-3.0"
+  "keywords": [
+	"double-signature",
+    "post-quantum",
+    "mayo",
+    "signature",
+    "cryptography",
+    "pqc"
+  ]
 }
