@@ -11,10 +11,8 @@ export function createRandomMessage(len) {
     return buf;
 }
 
-/**
- * Constant-time byte equality check.
- * @param {Uint8Array} a @param {Uint8Array} b
- */
+/** Constant-time byte equality check.
+ * @param {Uint8Array} a @param {Uint8Array} b */
 export function eq(a, b) { // simple loop for easier debugging hover breakpoints.
     if (a.length !== b.length) return false;
     for (let i = 0; i < a.length; i++)

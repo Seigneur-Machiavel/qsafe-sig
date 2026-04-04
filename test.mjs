@@ -4,7 +4,7 @@ import { createRandomMessage, eq } from './test-helpers.mjs';
 
 const NB_OF_TESTS = 100;
 const msg1 = createRandomMessage(256); // 256-byte message for quick tests
-const msg2 = createRandomMessage(256_000); // 256KB message for testing larger sizes and performance
+const msg2 = createRandomMessage(2**17); // 128KB message for testing larger sizes and performance
 
 const SEED_A = crypto.getRandomValues(new Uint8Array(32));
 const SEED_B = crypto.getRandomValues(new Uint8Array(32));
