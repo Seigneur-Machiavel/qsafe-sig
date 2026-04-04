@@ -1,6 +1,6 @@
 {
   "name": "@pinkparrot/qsafe-sig",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "author": "PinkParrot",
   "license": "GPL-3.0",
   "description": "Combination of pre quantum and post quantum signature, designed for a smooth migration.",
@@ -33,7 +33,7 @@
     "url": "https://github.com/Seigneur-Machiavel/qsafe-sig.git"
   },
   "keywords": [
-	"double-signature",
+    "double-signature",
     "post-quantum",
     "mayo",
     "signature",
