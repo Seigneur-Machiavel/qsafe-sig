@@ -11,7 +11,7 @@ Built on top of [`@pinkparrot/qsafe-mayo-wasm`](https://github.com/Seigneur-Mach
 ## Links
 
 - **NPM:** [qsafe-sig] (https://www.npmjs.com/package/@pinkparrot/qsafe-sig)
-- **Browser bundle:** [unpkg.com/@pinkparrot/qsafe-sig/dist/qsafe-sig.min.js](https://unpkg.com/@pinkparrot/qsafe-mayo-wasm/dist/mayo.browser.min.js)
+- **Browser bundle:** https://unpkg.com/@pinkparrot/qsafe-sig/dist/qsafe-sig.browser.min.js
 - **MAYO-WASM:** https://github.com/Seigneur-Machiavel/qsafe-mayo-wasm
 - **MAYO spec:** [pqmayo.org](https://pqmayo.org)
 
