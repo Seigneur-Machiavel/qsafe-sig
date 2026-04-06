@@ -1,5 +1,5 @@
 // @ts-check
-import { QsafeSigner } from './index.mjs';
+import { QsafeHelper, QsafeSigner } from './index.mjs';
 import { createRandomMessage, eq } from './test-helpers.mjs';
 
 const NB_OF_TESTS = 100;
@@ -49,7 +49,7 @@ async function testVariant(variant, log = false) {
     console.assert(!await verifier.verify(msg1, sig1, kpB.publicKey), `${variant} wrong pubkey wrongly accepted`);
     if (log) console.log(`✓ ${variant} cross-key rejection OK`);
 
-	// -- Tampered signature → rejected by verify(), not by checkFormat() --
+	// -- Tampered signature → rejected by verify(), not by checkSignatureFormat() --
 	const sigTampered = sig1.slice();
 	const tamperedIdx = 3 + Math.floor(Math.random() * (sig1.length - 3)); // random byte past the 3-byte header
 	sigTampered[tamperedIdx] ^= 0xFF;
@@ -65,10 +65,10 @@ async function testVariant(variant, log = false) {
 
     // -- checkFormat: structural check only (header + length), NOT a crypto check --
     // A bit-flipped sig has the same length and a valid header → format is still "correct"
-    console.assert( QsafeSigner.checkFormat(sig1),                         `${variant} valid sig should pass checkFormat`);
-    console.assert( QsafeSigner.checkFormat(sigTampered),                   `${variant} tampered sig has valid format (use verify() for crypto)`);
-    console.assert(!QsafeSigner.checkFormat(sig1.slice(0, sig1.length - 1)), `${variant} truncated sig should fail checkFormat`);
-    console.assert(!QsafeSigner.checkFormat(new Uint8Array(3)),              `${variant} garbage should fail checkFormat`);
+    console.assert( QsafeHelper.checkSignatureFormat(sig1),                           `${variant} valid sig should pass checkFormat`);
+    console.assert( QsafeHelper.checkSignatureFormat(sigTampered),                    `${variant} tampered sig has valid format (use verify() for crypto)`);
+    console.assert(!QsafeHelper.checkSignatureFormat(sig1.slice(0, sig1.length - 1)), `${variant} truncated sig should fail checkFormat`);
+    console.assert(!QsafeHelper.checkSignatureFormat(new Uint8Array(3)),              `${variant} garbage should fail checkFormat`);
     if (log) console.log(`✓ ${variant} checkFormat OK`);
 }
 

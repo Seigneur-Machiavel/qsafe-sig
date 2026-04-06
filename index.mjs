@@ -6,7 +6,7 @@ import { PROTOCOL_VERSIONS, CURRENT_VERSION, DEFAULT_VARIANT, AVAILABLE_VERSIONS
 		 ED25519_PRIV_SIZE, ED25519_PUB_SIZE, ED25519_SIG_SIZE,
 		 HEADER_SIZE, VARIANT_ID } from './constants.mjs';
 
-export { ed25519, PROTOCOL_VERSIONS, CURRENT_VERSION, AVAILABLE_VERSIONS };
+export { ed25519, QsafeHelper, HEADER_SIZE, PROTOCOL_VERSIONS, CURRENT_VERSION, AVAILABLE_VERSIONS };
 
 /** 
  * @typedef {{ publicKey: Uint8Array, secretKey: Uint8Array }} Keypair
@@ -72,35 +72,6 @@ export class QsafeSigner {
 	 * @param {Uint8Array} headerOrSignature */
 	static parseHeader(headerOrSignature) { return QsafeHelper.parseHeader(headerOrSignature); }
 
-    /** Verifies a hybrid signature. Lazy-loads the required WASM variant if not already cached.
-     * - Works with any protocol version whose descriptors are registered above.
-	 * - Do not parallelize calls to verify(), async is justified by the lazy WASM loading. To parallelize, please use workers
-     * @param {Uint8Array} message
-     * @param {Uint8Array} signature  - from sign()
-     * @param {Uint8Array} publicKey  - from loadMasterKey() */
-    async verify(message, signature, publicKey) {
-        const h = QsafeHelper.parseHeader(signature);
-		if (!h) return false; // invalid header or unknown version/variant
-		if (signature.length !== HEADER_SIZE + ED25519_SIG_SIZE + h.desc.sigSize) return false;
-		if (publicKey.length !== ED25519_PUB_SIZE + h.desc.pubKeySize) return false;
-
-        const sigReader = new BinaryReader(signature);
-        sigReader.read(HEADER_SIZE); // skip header already parsed
-        const edSig   = sigReader.read(ED25519_SIG_SIZE);
-        const mayoSig = sigReader.read(h.desc.sigSize);
-
-        const pubReader = new BinaryReader(publicKey);
-        const edPub   = pubReader.read(ED25519_PUB_SIZE);
-        const mayoPub = pubReader.read(h.desc.pubKeySize);
-
-        // Fast path: ed25519 first (pure JS, no WASM)
-        if (!ed25519.verify(edSig, message, edPub)) return false;
-
-        // Lazy-load the shared signer for this version+variant if not already cached
-        const signer = await this.#ensureShared(h.version, h.variant);
-        return signer.verify(message, mayoSig, mayoPub);
-    }
-
     /** Derives and loads a keypair from a master seed (16–32 bytes).
      * - After this call, sign() is ready to use.
      * - Requires a signer created with create(), not createFull().
@@ -110,8 +81,7 @@ export class QsafeSigner {
 		if (!isValidSize) throw new TypeError('masterSeed must be a Uint8Array of 16, 24 or 32 bytes');
 		if (!this.#mayoSigner) throw new Error('No signing instance — use QsafeSigner.create(), not createFull()');
 
-        const proto = PROTOCOL_VERSIONS[this.#version];
-        const desc  = proto.variants[this.#variant];
+		const desc = QsafeHelper.getVariantDescriptor(this.#variant, this.#version);
         const { edSeed, mayoSeed } = QsafeHelper.deriveSeeds(masterSeed, desc.seedSize);
 
         this.#edPriv = edSeed;
@@ -140,20 +110,46 @@ export class QsafeSigner {
         if (!this.#mayoSigner) throw new Error('No signing instance — use QsafeSigner.create(), not createFull()');
         if (!this.#mayoSigner.ready) throw new Error('MAYO signer not ready — was create() called?');
 
-        const proto  = PROTOCOL_VERSIONS[this.#version];
-        const desc   = proto.variants[this.#variant];
+		const desc 	  = QsafeHelper.getVariantDescriptor(this.#variant, this.#version);
         const edSig   = ed25519.sign(message, this.#edPriv);
         const mayoSig = this.#mayoSigner.sign(message);
         if (!mayoSig) throw new Error('MAYO sign() returned null');
 
-        // header: version(u16 BE) + variantId(u8)
         const writer = new BinaryWriter(HEADER_SIZE + ED25519_SIG_SIZE + desc.sigSize);
-        writer.writeU16BE(Number(this.#version));
-        writer.writeByte(VARIANT_ID[this.#variant]);
+		QsafeHelper.buildHeader(this.#variant, this.#version, writer);
         writer.writeBytes(edSig);
         writer.writeBytes(mayoSig);
 
         return writer.getBytes();
+    }
+
+	/** Verifies a hybrid signature. Lazy-loads the required WASM variant if not already cached.
+     * - Works with any protocol version whose descriptors are registered above.
+	 * - Do not parallelize calls to verify(), async is justified by the lazy WASM loading. To parallelize, please use workers
+     * @param {Uint8Array} message
+     * @param {Uint8Array} signature  - from sign()
+     * @param {Uint8Array} publicKey  - from loadMasterKey() */
+    async verify(message, signature, publicKey) {
+        const h = QsafeHelper.parseHeader(signature);
+		if (!h) return false; // invalid header or unknown version/variant
+		if (signature.length !== HEADER_SIZE + ED25519_SIG_SIZE + h.desc.sigSize) return false;
+		if (publicKey.length !== ED25519_PUB_SIZE + h.desc.pubKeySize) return false;
+
+        const sigReader = new BinaryReader(signature);
+        sigReader.read(HEADER_SIZE); // skip header already parsed
+        const edSig   = sigReader.read(ED25519_SIG_SIZE);
+        const mayoSig = sigReader.read(h.desc.sigSize);
+
+        const pubReader = new BinaryReader(publicKey);
+        const edPub   = pubReader.read(ED25519_PUB_SIZE);
+        const mayoPub = pubReader.read(h.desc.pubKeySize);
+
+        // Fast path: ed25519 first (pure JS, no WASM)
+        if (!ed25519.verify(edSig, message, edPub)) return false;
+
+        // Lazy-load the shared signer for this version+variant if not already cached
+        const signer = await this.#ensureShared(h.version, h.variant);
+        return signer.verify(message, mayoSig, mayoPub);
     }
 
     /** Loads and caches a shared MayoSigner for version+variant. Idempotent.
