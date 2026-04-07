@@ -2,8 +2,7 @@
 import { MayoSigner } from '@pinkparrot/qsafe-mayo-wasm';
 
 /**
- * @typedef {{ sigSize: number, pubKeySize: number, seedSize: number }} VariantDesc
- * @typedef {{ publicKey: Uint8Array, secretKey: Uint8Array }} Keypair */
+ * @typedef {{ sigSize: number, pubKeySize: number, seedSize: number }} VariantDesc */
 
 /** Versioned protocol descriptors and loaders.
  * - Each version entry describes the crypto params for that protocol version.

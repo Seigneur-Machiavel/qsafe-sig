@@ -31,15 +31,15 @@ const masterSeed = QsafeSigner.generateMasterKey(); // 32-byte Uint8Array
 
 // Create a signer and derive a keypair from the seed
 const signer = await QsafeSigner.create();
-const { publicKey, secretKey } = signer.loadMasterKey(masterSeed);
+const { hybridKey, secretKey } = signer.loadMasterKey(masterSeed);
 
 // Sign
 const message   = new TextEncoder().encode('hello world');
-const signature = signer.sign(message);
+const hybridSig = signer.sign(message);
 
 // Verify (use createFull() for backward-compatible multi-version verification)
 const verifier = await QsafeSigner.createFull();
-const valid    = await verifier.verify(message, signature, publicKey);
+const valid    = await verifier.verify(message, hybridSig, hybridKey);
 console.log(valid); // true
 ```
 
@@ -48,7 +48,12 @@ console.log(valid); // true
 Each `sign()` call produces a single `Uint8Array` containing:
 
 ```
-[ header (3B) | ed25519 signature (64B) | MAYO signature (variant-dependent) ]
+[ ed25519 signature (64B) | MAYO signature (variant-dependent) ]
+```
+
+Each `hybridKey` follow the format:
+```
+[ header (3B) | ed25519 pubKey | MAYO pubKey (variant-dependent) ]
 ```
 
 The header encodes the protocol version and MAYO variant so `verify()` always knows what it's reading — no out-of-band metadata needed.
@@ -78,16 +83,16 @@ Generates a cryptographically random master seed.
 
 - `size`: `16`, `24`, or `32` bytes. Default: `32`
 
-### `QsafeSigner.checkFormat(signature)` → `boolean`
+### `QsafeHelper.checkFormat(hybridKey, hybridSig?)` → `boolean`
 
-Fast structural check: validates the header and byte length. **Does not perform any cryptographic verification** — use as a pre-filter before `verify()`.
+Fast structural check: validates the header and byte length. **Does not perform any cryptographic verification**.
 
-### `signer.loadMasterKey(masterSeed)` → `{ publicKey, secretKey }`
+### `signer.loadMasterKey(masterSeed)` → `{ hybridKey, secretKey }`
 
 Derives and loads a keypair from the master seed. Must be called before `sign()`.
 
 - `masterSeed`: `Uint8Array` of 16, 24, or 32 bytes
-- Returns `{ publicKey: Uint8Array, secretKey: Uint8Array }`
+- Returns `{ hybridKey: Uint8Array, secretKey: Uint8Array }`
 
 The same instance can sign many messages after a single `loadMasterKey()` call.
 
@@ -95,7 +100,7 @@ The same instance can sign many messages after a single `loadMasterKey()` call.
 
 Signs a message. Requires a prior `loadMasterKey()` call.
 
-### `signer.verify(message, signature, publicKey)` → `Promise<boolean>`
+### `signer.verify(message, hybridSig, hybridKey)` → `Promise<boolean>`
 
 Verifies a hybrid signature. Lazy-loads the required WASM variant on first call, then caches it. Works across all registered protocol versions.
 

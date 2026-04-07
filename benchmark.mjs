@@ -11,7 +11,7 @@ async function chainVerify(variant) {
     console.log(`\n-- Chain verify x${COUNT}: ${variant} --`);
 
     const signer = await QsafeSigner.create(variant);
-    const { publicKey } = signer.loadMasterKey(SEED);
+    const { hybridKey } = signer.loadMasterKey(SEED);
 
     // -- Sign phase --
     const messages = [];
@@ -30,7 +30,7 @@ async function chainVerify(variant) {
 
     const t0verify = performance.now();
     for (let i = 0; i < COUNT; i++)
-        if (!await verifier.verify(messages[i], sigs[i], publicKey)) failures++;
+        if (!await verifier.verify(messages[i], sigs[i], hybridKey)) failures++;
 	
     const verifyMs = performance.now() - t0verify;
     console.log(`Verify : ${verifyMs.toFixed(2)} ms total | ~${(verifyMs / COUNT).toFixed(3)} ms/op`);

@@ -1,4 +1,4 @@
-// Minimal binary writer/reader for the custom signature format. Not a general-purpose library, just enough for our needs.
+// Minimal binary writer/reader. Not a general-purpose library, just enough for our needs.
 export class BinaryWriter {
     cursor = 0;
     view;

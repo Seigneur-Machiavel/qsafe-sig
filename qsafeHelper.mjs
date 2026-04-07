@@ -2,8 +2,9 @@
 import { hkdf } from '@noble/hashes/hkdf.js';
 import { sha256 } from '@noble/hashes/sha2.js';
 import { BinaryReader, BinaryWriter } from './binary-writer-reader.mjs';
-import { PROTOCOL_VERSIONS, HKDF_INFO_ED25519, HKDF_INFO_MAYO, DEFAULT_VARIANT, CURRENT_VERSION,
-		 ED25519_SIG_SIZE, ED25519_PRIV_SIZE, HEADER_SIZE, VARIANT_BY_ID, VARIANT_ID } from './constants.mjs';
+import { HKDF_INFO_ED25519, HKDF_INFO_MAYO, DEFAULT_VARIANT, CURRENT_VERSION,
+		 ED25519_SIG_SIZE, ED25519_PUB_SIZE, ED25519_PRIV_SIZE,
+		 PROTOCOL_VERSIONS, HEADER_SIZE, VARIANT_BY_ID, VARIANT_ID } from './constants.mjs';
 
 export class QsafeHelper {
 	/** Retrieves the descriptor for a given protocol version and variant, throwing if unknown.
@@ -37,10 +38,12 @@ export class QsafeHelper {
 		if (!writer) return w.getBytes();
 	}
 
-    /** Resolves version + variantId from a signature header. @param {Uint8Array} sig */
-    static parseHeader(sig) {
-        if (sig.length < HEADER_SIZE) return null;
-        const reader    = new BinaryReader(sig);
+    /** Resolves version + variantId from a hybridKey header.
+	 * - Passing the hybridKey header (3 first bytes) will produce the same result.
+	 * @param {Uint8Array} hybridKey */
+    static parseHeader(hybridKey) {
+        if (hybridKey.length < HEADER_SIZE) return null;
+        const reader    = new BinaryReader(hybridKey);
         const version   = String(reader.readU16BE());
         const variantId = reader.readByte();
         const variant   = VARIANT_BY_ID[variantId];
@@ -49,11 +52,14 @@ export class QsafeHelper {
         return { version, variant, desc: vProto.variants[variant] };
     }
 
-	/** Checks that a signature buffer has a valid header and correct byte length.
-     * - Zero crypto — safe to call as a fast pre-filter. @param {Uint8Array} signature */
-    static checkSignatureFormat(signature) {
-        const h = QsafeHelper.parseHeader(signature);
-        if (h) return signature.length === HEADER_SIZE + ED25519_SIG_SIZE + h.desc.sigSize;
-        else return false;
-    }
+	/** Quick format check for a hybridKey, without parsing the full signature.
+	 * @param {Uint8Array} hybridKey
+	 * @param {Uint8Array} [hybridSig] Optional: signature associated to the hybridKey. */
+	static checkFormat(hybridKey, hybridSig) {
+		const h = QsafeHelper.parseHeader(hybridKey);
+		if (!h) return false; // invalid header or unknown version/variant
+		if (hybridKey.length !== HEADER_SIZE + ED25519_PUB_SIZE + h.desc.pubKeySize) return false;
+		if (hybridSig && hybridSig.length !== ED25519_SIG_SIZE + h.desc.sigSize) return false;
+		return true;
+	}
 }

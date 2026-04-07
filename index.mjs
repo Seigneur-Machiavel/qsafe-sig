@@ -9,7 +9,7 @@ import { PROTOCOL_VERSIONS, CURRENT_VERSION, DEFAULT_VARIANT, AVAILABLE_VERSIONS
 export { ed25519, QsafeHelper, HEADER_SIZE, PROTOCOL_VERSIONS, CURRENT_VERSION, AVAILABLE_VERSIONS };
 
 /** 
- * @typedef {{ publicKey: Uint8Array, secretKey: Uint8Array }} Keypair
+ * @typedef {{ hybridKey : Uint8Array, secretKey: Uint8Array }} Keypair
  * @typedef {import('@pinkparrot/qsafe-mayo-wasm').MayoSigner} MayoSigner */
 
 export class QsafeSigner {
@@ -67,11 +67,6 @@ export class QsafeSigner {
         return seed;
     }
 
-	/** Parses a signature header and resolves its protocol version and variant.
-	 * - Returns null if the header is invalid or references an unknown version/variant.
-	 * @param {Uint8Array} headerOrSignature */
-	static parseHeader(headerOrSignature) { return QsafeHelper.parseHeader(headerOrSignature); }
-
     /** Derives and loads a keypair from a master seed (16–32 bytes).
      * - After this call, sign() is ready to use.
      * - Requires a signer created with create(), not createFull().
@@ -88,22 +83,24 @@ export class QsafeSigner {
         const mayo = this.#mayoSigner.keypairFromSeed(mayoSeed); // stores secretKey in this.#mayoSigner
         if (!mayo || !this.#mayoSigner.ready) throw new Error('MAYO keypair generation failed');
 
-        // publicKey = ed25519_pub(32) + mayo_pub
-        const pub = new BinaryWriter(ED25519_PUB_SIZE + desc.pubKeySize);
-        pub.writeBytes(ed25519.getPublicKey(edSeed));
-        pub.writeBytes(mayo.publicKey);
+        // hybridKey = header + ed25519_pub(32) + mayo_pub
+        const pubWriter = new BinaryWriter(HEADER_SIZE + ED25519_PUB_SIZE + desc.pubKeySize);
+		QsafeHelper.buildHeader(this.#variant, this.#version, pubWriter);
+        pubWriter.writeBytes(ed25519.getPublicKey(edSeed));
+        pubWriter.writeBytes(mayo.publicKey);
 
         // secretKey = variantId(1) + ed25519_priv(32) + mayo_sec(seedSize)
-        const sec = new BinaryWriter(1 + ED25519_PRIV_SIZE + desc.seedSize);
-        sec.writeByte(VARIANT_ID[this.#variant]);
-        sec.writeBytes(edSeed);
-        sec.writeBytes(mayo.secretKey);
+        const secWriter = new BinaryWriter(1 + ED25519_PRIV_SIZE + desc.seedSize);
+        secWriter.writeByte(VARIANT_ID[this.#variant]);
+        secWriter.writeBytes(edSeed);
+        secWriter.writeBytes(mayo.secretKey);
 
-        return { publicKey: pub.getBytes(), secretKey: sec.getBytes() };
+        return { hybridKey: pubWriter.getBytes(), secretKey: secWriter.getBytes() };
     }
 
     /** Signs a message. Requires a prior loadMasterKey() call.
      * - The same instance can sign many messages without re-loading the key.
+	 * - Returned hybrid signature: [ ed25519 signature (64B) | MAYO signature (variant-dependent) ]
      * @param {Uint8Array} message */
     sign(message) {
         if (!this.#edPriv) throw new Error('No key loaded — call loadMasterKey() first');
@@ -115,8 +112,7 @@ export class QsafeSigner {
         const mayoSig = this.#mayoSigner.sign(message);
         if (!mayoSig) throw new Error('MAYO sign() returned null');
 
-        const writer = new BinaryWriter(HEADER_SIZE + ED25519_SIG_SIZE + desc.sigSize);
-		QsafeHelper.buildHeader(this.#variant, this.#version, writer);
+        const writer = new BinaryWriter(ED25519_SIG_SIZE + desc.sigSize);
         writer.writeBytes(edSig);
         writer.writeBytes(mayoSig);
 
@@ -127,20 +123,20 @@ export class QsafeSigner {
      * - Works with any protocol version whose descriptors are registered above.
 	 * - Do not parallelize calls to verify(), async is justified by the lazy WASM loading. To parallelize, please use workers
      * @param {Uint8Array} message
-     * @param {Uint8Array} signature  - from sign()
-     * @param {Uint8Array} publicKey  - from loadMasterKey() */
-    async verify(message, signature, publicKey) {
-        const h = QsafeHelper.parseHeader(signature);
+     * @param {Uint8Array} hybridSig  - from sign()
+     * @param {Uint8Array} hybridKey  - from loadMasterKey() */
+    async verify(message, hybridSig, hybridKey) {
+        const h = QsafeHelper.parseHeader(hybridKey);
 		if (!h) return false; // invalid header or unknown version/variant
-		if (signature.length !== HEADER_SIZE + ED25519_SIG_SIZE + h.desc.sigSize) return false;
-		if (publicKey.length !== ED25519_PUB_SIZE + h.desc.pubKeySize) return false;
+		if (hybridSig.length !== ED25519_SIG_SIZE + h.desc.sigSize) return false;
+		if (hybridKey.length !== HEADER_SIZE + ED25519_PUB_SIZE + h.desc.pubKeySize) return false;
 
-        const sigReader = new BinaryReader(signature);
-        sigReader.read(HEADER_SIZE); // skip header already parsed
+        const sigReader = new BinaryReader(hybridSig);
         const edSig   = sigReader.read(ED25519_SIG_SIZE);
         const mayoSig = sigReader.read(h.desc.sigSize);
 
-        const pubReader = new BinaryReader(publicKey);
+        const pubReader = new BinaryReader(hybridKey);
+        pubReader.read(HEADER_SIZE); // skip header already parsed
         const edPub   = pubReader.read(ED25519_PUB_SIZE);
         const mayoPub = pubReader.read(h.desc.pubKeySize);
 
