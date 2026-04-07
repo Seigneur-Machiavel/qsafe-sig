@@ -6,13 +6,11 @@ import { PROTOCOL_VERSIONS, CURRENT_VERSION, DEFAULT_VARIANT, AVAILABLE_VERSIONS
 		 ED25519_PRIV_SIZE, ED25519_PUB_SIZE, ED25519_SIG_SIZE,
 		 HEADER_SIZE, VARIANT_ID } from './constants.mjs';
 
-export { ed25519, QsafeHelper, HEADER_SIZE, PROTOCOL_VERSIONS, CURRENT_VERSION, AVAILABLE_VERSIONS };
-
 /** 
  * @typedef {{ hybridKey : Uint8Array, secretKey: Uint8Array }} Keypair
  * @typedef {import('@pinkparrot/qsafe-mayo-wasm').MayoSigner} MayoSigner */
 
-export class QsafeSigner {
+class QsafeSigner {
     // Shared stateless instances for verify() — one per "version:variant", loaded once.
     // These never have keypairFromSeed() called on them, so they are safe to share.
     /** @type {Record<string, MayoSigner>} */
@@ -160,3 +158,7 @@ export class QsafeSigner {
         return signer;
     }
 }
+
+const Qsafe = { QsafeSigner, QsafeHelper, ed25519, PROTOCOL_VERSIONS, CURRENT_VERSION, AVAILABLE_VERSIONS };
+export { QsafeSigner, QsafeHelper, ed25519, PROTOCOL_VERSIONS, CURRENT_VERSION, AVAILABLE_VERSIONS };
+export default Qsafe;
