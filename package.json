@@ -1,6 +1,6 @@
 {
   "name": "@pinkparrot/qsafe-sig",
-  "version": "0.0.8",
+  "version": "0.0.9",
   "author": "PinkParrot",
   "license": "GPL-3.0",
   "description": "Combination of pre quantum and post quantum signature, designed for a smooth migration.",
