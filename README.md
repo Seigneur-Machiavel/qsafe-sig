@@ -58,7 +58,7 @@ Each `hybridKey` follow the format:
 
 The header encodes the protocol version and MAYO variant so `verify()` always knows what it's reading — no out-of-band metadata needed.
 
-Both keys are derived from the same master seed via **HKDF-SHA256**, using separate info tags (`qsafe-ed25519` / `qsafe-mayo`). One seed → two independent keys → one hybrid keypair.
+Both keys are derived from the same master seed via **HKDF-SHA512**, using separate info tags (`qsafe-ed25519` / `qsafe-mayo`). One seed → two independent keys → one hybrid keypair.
 
 `verify()` runs Ed25519 first (pure JS, fast), and only hits WASM if that passes. Both must succeed for the signature to be valid.
 

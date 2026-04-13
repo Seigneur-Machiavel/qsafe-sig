@@ -15,6 +15,14 @@
 			"skipFiles": ["<node_internals>/**"],
 			"program": "${workspaceFolder}/benchmark.mjs",
 			"runtimeArgs": ["--inspect"]
+		},
+		{
+			"type": "node",
+			"request": "launch",
+			"name": "serve-front-test",
+			"skipFiles": ["<node_internals>/**"],
+			"program": "${workspaceFolder}/serve-front-test.mjs",
+			"runtimeArgs": ["--inspect"]
 		}
     ]
 }

@@ -1,6 +1,6 @@
 // @ts-check
 import { hkdf } from '@noble/hashes/hkdf.js';
-import { sha256 } from '@noble/hashes/sha2.js';
+import { sha512 } from '@noble/hashes/sha2.js';
 import { BinaryReader, BinaryWriter } from './binary-writer-reader.mjs';
 import { HKDF_INFO_ED25519, HKDF_INFO_MAYO, DEFAULT_VARIANT, CURRENT_VERSION,
 		 ED25519_SIG_SIZE, ED25519_PUB_SIZE, ED25519_PRIV_SIZE,
@@ -18,11 +18,11 @@ export class QsafeHelper {
 		return desc;
 	}
 
-    /** Derives ed25519 + mayo seeds from a master seed via HKDF-SHA256.
+    /** Derives ed25519 + mayo seeds from a master seed via HKDF-SHA512.
      * @param {Uint8Array} masterSeed  @param {number} mayoSeedSize */
     static deriveSeeds(masterSeed, mayoSeedSize) {
-        const edSeed   = hkdf(sha256, masterSeed, undefined, HKDF_INFO_ED25519, ED25519_PRIV_SIZE);
-        const mayoSeed = hkdf(sha256, masterSeed, undefined, HKDF_INFO_MAYO, mayoSeedSize);
+        const edSeed   = hkdf(sha512, masterSeed, undefined, HKDF_INFO_ED25519, ED25519_PRIV_SIZE);
+        const mayoSeed = hkdf(sha512, masterSeed, undefined, HKDF_INFO_MAYO, mayoSeedSize);
         return { edSeed, mayoSeed };
     }
 

@@ -1,5 +1,6 @@
 // @ts-check
 import { QsafeHelper } from './qsafeHelper.mjs';
+import { sha256, sha512 } from '@noble/hashes/sha2.js';
 import { ed25519 } from '@noble/curves/ed25519.js';
 import { BinaryWriter, BinaryReader } from './binary-writer-reader.mjs';
 import { PROTOCOL_VERSIONS, CURRENT_VERSION, DEFAULT_VARIANT, AVAILABLE_VERSIONS,
@@ -159,6 +160,6 @@ class QsafeSigner {
     }
 }
 
-const Qsafe = { QsafeSigner, QsafeHelper, ed25519, PROTOCOL_VERSIONS, CURRENT_VERSION, AVAILABLE_VERSIONS };
-export { QsafeSigner, QsafeHelper, ed25519, PROTOCOL_VERSIONS, CURRENT_VERSION, AVAILABLE_VERSIONS };
+const Qsafe = { QsafeSigner, QsafeHelper, sha256, sha512, ed25519, HEADER_SIZE, PROTOCOL_VERSIONS, CURRENT_VERSION, AVAILABLE_VERSIONS };
+export { QsafeSigner, QsafeHelper, sha256, sha512, ed25519, HEADER_SIZE, PROTOCOL_VERSIONS, CURRENT_VERSION, AVAILABLE_VERSIONS };
 export default Qsafe;

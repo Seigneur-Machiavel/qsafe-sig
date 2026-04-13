@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>QSAFE-SIG — Browser Test</title>
+  <style>
+    body { font-family: monospace; background: #111; color: #ccc; padding: 1rem; }
+    .pass  { color: #4f4; }
+    .fail  { color: #f44; font-weight: bold; }
+    .info  { color: #88f; }
+    .group { color: #ff8; margin-top: 1rem; }
+  </style>
+</head>
+<body>
+<pre id="log">Loading…</pre>
+
+<script type="module">
+  import { QsafeSigner }             from './dist/qsafe-sig.browser.min.js';
+  import { createRandomMessage, eq } from './test-helpers.mjs';
+
+  const NB_OF_TESTS = 100;
+  const SEED_A = crypto.getRandomValues(new Uint8Array(32));
+  const SEED_B = crypto.getRandomValues(new Uint8Array(32));
+
+  // -- Logger --
+  const out  = document.getElementById('log');
+  out.textContent = '';
+  const log  = (msg, cls = '') => out.innerHTML += `<span class="${cls}">${msg}\n</span>`;
+  const pass = msg => log(`✓ ${msg}`, 'pass');
+  const fail = msg => log(`✗ ${msg}`, 'fail');
+  const info = msg => log(`  ${msg}`, 'info');
+
+  const assert = (condition, msg) => {
+    console.assert(condition, msg);
+    if (!condition) fail(`ASSERT FAILED: ${msg}`);
+  };
+
+  /** @param {'mayo1'|'mayo2'} variant @param {boolean} verbose */
+  async function testVariant(variant, verbose) {
+    const msg1 = createRandomMessage(256);
+    const msg2 = createRandomMessage(2 ** 17);
+    let start = performance.now();
+
+    // -- Keypair determinism --
+    const signerA1 = await QsafeSigner.create(variant);
+    const signerA2 = await QsafeSigner.create(variant);
+    const kpA1 = signerA1.loadMasterKey(SEED_A);
+    const kpA2 = signerA2.loadMasterKey(SEED_A);
+    if (verbose) info(`keypair generation ~${((performance.now() - start) / 2).toFixed(2)} ms`);
+    assert(eq(kpA1.hybridKey, kpA2.hybridKey), `${variant} hybridKey should be deterministic`);
+    assert(eq(kpA1.secretKey, kpA2.secretKey), `${variant} secretKey should be deterministic`);
+    if (verbose) pass(`${variant} keypair determinism OK`);
+
+    // -- Different seeds → different keypairs --
+    const signerB = await QsafeSigner.create(variant);
+    const kpB = signerB.loadMasterKey(SEED_B);
+    assert(!eq(kpA1.hybridKey, kpB.hybridKey), `${variant} collision: same pubKey from different seeds`);
+    assert(!eq(kpA1.secretKey, kpB.secretKey), `${variant} collision: same secKey from different seeds`);
+    if (verbose) pass(`${variant} seed isolation OK`);
+
+    // -- Sign/verify roundtrip --
+    start = performance.now();
+    const sig1 = signerA1.sign(msg1);
+    const sig2 = signerA1.sign(msg2);
+    if (verbose) info(`signing ~${((performance.now() - start) / 2).toFixed(2)} ms`);
+
+    start = performance.now();
+    const verifier = await QsafeSigner.createFull();
+    assert( await verifier.verify(msg1, sig1, kpA1.hybridKey), `${variant} sig1/msg1 rejected`);
+    assert( await verifier.verify(msg2, sig2, kpA1.hybridKey), `${variant} sig2/msg2 rejected`);
+    assert(!await verifier.verify(msg2, sig1, kpA1.hybridKey), `${variant} sig1 wrongly accepts msg2`);
+    assert(!await verifier.verify(msg1, sig2, kpA1.hybridKey), `${variant} sig2 wrongly accepts msg1`);
+    if (verbose) info(`verifying ~${((performance.now() - start) / 4).toFixed(2)} ms`);
+    if (verbose) pass(`${variant} sign/verify roundtrip OK`);
+
+    // -- Wrong public key → rejected --
+    assert(!await verifier.verify(msg1, sig1, kpB.hybridKey), `${variant} wrong pubkey wrongly accepted`);
+    if (verbose) pass(`${variant} cross-key rejection OK`);
+
+    // -- Tampered signature → rejected --
+    const sigTampered = sig1.slice();
+    const tamperedIdx = 3 + Math.floor(Math.random() * (sig1.length - 3));
+    sigTampered[tamperedIdx] ^= 0xFF;
+    assert(!await verifier.verify(msg1, sigTampered, kpA1.hybridKey), `${variant} tampered sig wrongly accepted (idx ${tamperedIdx})`);
+    if (verbose) pass(`${variant} tampered sig rejection OK (flipped byte at index ${tamperedIdx})`);
+
+    // -- Tampered message → rejected --
+    const msgTampered = msg1.slice();
+    const msgTamperedIdx = Math.floor(Math.random() * msg1.length);
+    msgTampered[msgTamperedIdx] ^= 0xFF;
+    assert(!await verifier.verify(msgTampered, sig1, kpA1.hybridKey), `${variant} tampered msg wrongly accepted (idx ${msgTamperedIdx})`);
+    if (verbose) pass(`${variant} tampered msg rejection OK (flipped byte at index ${msgTamperedIdx})`);
+  }
+
+  async function run() {
+    try {
+      for (const variant of ['mayo1', 'mayo2']) {
+        log(`-- Testing ${variant} --`, 'group');
+        for (let i = 0; i < NB_OF_TESTS - 1; i++) await testVariant(variant, false);
+        await testVariant(variant, true);
+      }
+      log('-- TEST END --', 'group');
+    } catch (err) {
+      log(`UNCAUGHT ERROR: ${err?.message ?? err}`, 'fail');
+      console.error(err);
+    }
+  }
+
+  run();
+</script>
+</body>
+</html>
