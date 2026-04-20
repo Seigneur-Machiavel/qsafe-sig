@@ -31,7 +31,7 @@ class QsafeSigner {
     /** Creates a signer ready for signing with a single version+variant.
      * Ideal for signing use-cases. Each instance gets its own MayoSigner.
      * @param {'mayo1' | 'mayo2'} [variant] - Default: 'mayo1'
-     * @param {'1'} [version] - Protocol version. Default: CURRENT_VERSION */
+     * @param {string} [version] - Protocol version. Default: CURRENT_VERSION */
     static async create(variant = DEFAULT_VARIANT, version = CURRENT_VERSION) {
         const proto = PROTOCOL_VERSIONS[version];
         if (!proto) throw new Error(`Unknown protocol version: ${version}`);
